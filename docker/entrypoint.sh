@@ -29,7 +29,8 @@ export HERMES_WEBUI_AGENT_DIR="${HERMES_WEBUI_AGENT_DIR:-$INSTALL_DIR}"
 export HERMES_WEBUI_HOST="$WEBUI_HOST" HERMES_WEBUI_PORT="$WEBUI_PORT"
 export WEBUI_HOST WEBUI_PORT DASHBOARD_HOST DASHBOARD_PORT
 export GATEWAY_HEALTH_URL
-export PATH="$INSTALL_DIR/.venv/bin:$PATH"
+export VIRTUAL_ENV="${VIRTUAL_ENV:-$INSTALL_DIR/.venv}"
+export PATH="$VIRTUAL_ENV/bin:$INSTALL_DIR:$PATH"
 export PYTHONPATH="$INSTALL_DIR:$WEBUI_DIR${PYTHONPATH:+:$PYTHONPATH}"
 export API_SERVER_ENABLED="${API_SERVER_ENABLED:-true}"
 export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
@@ -61,7 +62,6 @@ prepare_user() {
 bootstrap_home() {
   gosu hermes bash -lc '
     set -Eeuo pipefail
-    source /opt/hermes/.venv/bin/activate
     mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home}
     if [[ ! -f "$HERMES_HOME/.env" ]]; then cp /opt/hermes/.env.example "$HERMES_HOME/.env"; fi
     if [[ ! -f "$HERMES_HOME/config.yaml" ]]; then cp /opt/hermes/cli-config.yaml.example "$HERMES_HOME/config.yaml"; fi
@@ -70,7 +70,7 @@ bootstrap_home() {
       printf "%s" "$HERMES_AUTH_JSON_BOOTSTRAP" > "$HERMES_HOME/auth.json"
       chmod 600 "$HERMES_HOME/auth.json"
     fi
-    if [[ -d /opt/hermes/skills ]]; then python3 /opt/hermes/tools/skills_sync.py; fi
+    if [[ -d /opt/hermes/skills ]]; then "$VIRTUAL_ENV/bin/python" /opt/hermes/tools/skills_sync.py; fi
   '
 }
 
@@ -224,14 +224,14 @@ ensure_api_server_key
 log "Gateway API auth configured with a ${#API_SERVER_KEY}-character key"
 log "Hermes WebUI agent source is ${HERMES_WEBUI_AGENT_DIR}"
 log "Starting Hermes gateway, dashboard, and WebUI"
-start_service gateway gosu hermes bash -lc 'source /opt/hermes/.venv/bin/activate && exec hermes gateway run'
+start_service gateway gosu hermes "$VIRTUAL_ENV/bin/hermes" gateway run
 
-dashboard_command=(gosu hermes bash -lc "source /opt/hermes/.venv/bin/activate && exec hermes dashboard --host '$DASHBOARD_HOST' --port '$DASHBOARD_PORT' --no-open")
+dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" --no-open)
 if [[ "$DASHBOARD_HOST" != "127.0.0.1" && "$DASHBOARD_HOST" != "localhost" ]]; then
-  dashboard_command=(gosu hermes bash -lc "source /opt/hermes/.venv/bin/activate && exec hermes dashboard --host '$DASHBOARD_HOST' --port '$DASHBOARD_PORT' --no-open --insecure")
+  dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" --no-open --insecure)
 fi
 start_service dashboard "${dashboard_command[@]}"
-start_service webui gosu hermes bash -lc "cd '$WEBUI_DIR' && export HOME=/home/hermeswebui HERMES_WEBUI_AGENT_DIR='$INSTALL_DIR' && source /opt/hermes/.venv/bin/activate && exec python server.py"
+start_service webui gosu hermes bash -lc "cd '$WEBUI_DIR' && export HOME=/home/hermeswebui HERMES_WEBUI_AGENT_DIR='$INSTALL_DIR' && exec /opt/hermes/.venv/bin/python server.py"
 
 wait_for_url gateway "$GATEWAY_HEALTH_URL"
 wait_for_url dashboard "http://127.0.0.1:${DASHBOARD_PORT}/"
