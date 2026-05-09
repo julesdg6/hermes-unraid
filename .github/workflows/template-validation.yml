@@ -1,0 +1,29 @@
+name: template-validation
+
+on:
+  push:
+    paths:
+      - 'unraid/**'
+      - 'scripts/validate-template.py'
+      - '.github/workflows/template-validation.yml'
+  pull_request:
+    paths:
+      - 'unraid/**'
+      - 'scripts/validate-template.py'
+      - '.github/workflows/template-validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Hermes Suite XML template
+        run: python scripts/validate-template.py unraid/hermes-suite.xml

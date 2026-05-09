@@ -1,0 +1,27 @@
+name: trivy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '11 4 * * *'
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build local image
+        run: docker build -t hermes-suite:trivy .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: hermes-suite:trivy
+          format: table
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH

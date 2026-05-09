@@ -1,0 +1,15 @@
+name: push-build
+
+on:
+  push:
+    branches:
+      - main
+      - 'copilot/**'
+  pull_request:
+
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      push_image: ${{ github.event_name == 'push' }}
+      reason: push or pull request build

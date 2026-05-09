@@ -1,0 +1,12 @@
+name: scheduled-build
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+
+jobs:
+  scheduled-build:
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      push_image: true
+      reason: daily scheduled rebuild

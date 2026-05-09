@@ -1,0 +1,17 @@
+name: manual-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: Push the built image to GHCR
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  manual-build:
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      push_image: ${{ inputs.push_image }}
+      reason: manual workflow_dispatch build
