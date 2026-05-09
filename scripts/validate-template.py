@@ -33,6 +33,7 @@ REQUIRED_CONFIG_TARGETS = {
     "DASHBOARD_HOST",
     "TZ",
     "/home/hermeswebui/workspace",
+    "/opt/hermes",
 }
 
 
@@ -63,6 +64,38 @@ def main() -> int:
     missing_targets = sorted(REQUIRED_CONFIG_TARGETS - targets)
     if missing_targets:
         raise SystemExit(f"missing required Config targets: {', '.join(missing_targets)}")
+
+    legacy_volume_config = next(
+        (config for config in configs if config.attrib.get("Target") == "/opt/hermes"),
+        None,
+    )
+    if legacy_volume_config is None:
+        raise SystemExit("missing legacy /opt/hermes migration config")
+
+    expected_attributes = {
+        "Type": "Path",
+        "Display": "advanced",
+        "Required": "false",
+        "Default": "",
+    }
+    for attribute, expected_value in expected_attributes.items():
+        actual_value = legacy_volume_config.attrib.get(attribute, "")
+        if actual_value != expected_value:
+            raise SystemExit(
+                f"/opt/hermes migration config must set {attribute}={expected_value!r}, got {actual_value!r}"
+            )
+
+    description = legacy_volume_config.attrib.get("Description", "")
+    for phrase in (
+        "Docker named volume",
+        "hermes_shared_volume",
+        "leave blank",
+        "not a host filesystem path",
+    ):
+        if phrase.lower() not in description.lower():
+            raise SystemExit(
+                f"/opt/hermes migration config description must mention {phrase!r}"
+            )
 
     print(f"Template validation passed for {template_path}")
     return 0

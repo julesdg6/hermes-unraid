@@ -69,7 +69,7 @@ Recommended Unraid host paths:
 - `/mnt/user/appdata/hermes-agent/hermes-home` -> `/home/hermes/.hermes`
 - `/mnt/user/appdata/hermes-agent/workspace` -> `/home/hermeswebui/workspace`
 
-The `/opt/hermes` install path is kept internally by the image. Optionally map the legacy `hermes_shared_volume` there only when migrating from the old three-container setup (see the advanced template settings).
+The `/opt/hermes` install path is kept internally by the image. Only map the legacy Docker named volume `hermes_shared_volume` there when migrating from the old three-container setup (see the advanced template settings). Do not use a host filesystem path for that field.
 
 ## Compatibility with the existing three-template setup
 
@@ -86,7 +86,7 @@ This container is designed to preserve compatibility with mmartial's Hermes temp
 - existing Hermes home path `/mnt/user/appdata/hermes-agent/hermes-home`
 - existing workspace path `/mnt/user/appdata/hermes-agent/workspace`
 
-The old named shared volume mounted at `/opt/hermes` is supported as an optional migration path. When you map `hermes_shared_volume` to `/opt/hermes`, the container detects that the path has been externally mounted and automatically updates it with the current Hermes install on startup. New installs should leave `/opt/hermes` unmounted.
+The old named shared volume mounted at `/opt/hermes` is supported as an optional migration path. When you map the Docker named volume `hermes_shared_volume` to `/opt/hermes`, the container detects that the path has been externally mounted and automatically updates it with the current Hermes install on startup. New installs should leave `/opt/hermes` unmounted.
 
 ## Migration from the three-container setup
 
@@ -103,7 +103,7 @@ In the old layout, `hermes_shared_volume` was a named Docker volume mounted to `
 
 In Hermes Suite the same source tree is baked into the image, so most users do **not** need to migrate the old volume at all.
 
-If you want to reuse the old named volume (for example, to preserve any custom additions you made inside it), map it to `/opt/hermes` using the **Hermes Install Path (Legacy Migration)** field in the template's advanced settings. On startup the container detects the external mount and updates the volume with the current Hermes install, so the old code is automatically replaced by the latest version.
+If you want to reuse the old named volume (for example, to preserve any custom additions you made inside it), enter `hermes_shared_volume` in the **Hermes Shared Source Volume (Legacy Migration)** field in the template's advanced settings. That field is for a Docker named volume, not a host path such as `/mnt/user/...`. On startup the container detects the external mount and updates the volume with the current Hermes install, so the old code is automatically replaced by the latest version.
 
 If you manually added files into that named volume, back them up first and copy only the pieces you still need into your persistent Hermes data directory (`HERMES_HOME`) before deleting the old volume.
 
