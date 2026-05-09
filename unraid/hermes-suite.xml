@@ -54,6 +54,6 @@ Do not publish them directly to the internet without additional protection. Pref
     <Config Name="DASHBOARD_PORT" Target="DASHBOARD_PORT" Default="9119" Mode="" Description="Dashboard bind port inside the container" Type="Variable" Display="advanced" Required="false" Mask="false">9119</Config>
     <Config Name="WEBUI_HOST" Target="WEBUI_HOST" Default="0.0.0.0" Mode="" Description="Hermes WebUI bind host" Type="Variable" Display="advanced" Required="false" Mask="false">0.0.0.0</Config>
     <Config Name="WEBUI_PORT" Target="WEBUI_PORT" Default="8787" Mode="" Description="Hermes WebUI bind port inside the container" Type="Variable" Display="advanced" Required="false" Mask="false">8787</Config>
-    <Config Name="HERMES_WEBUI_PASSWORD" Target="HERMES_WEBUI_PASSWORD" Default="hermes" Mode="" Description="Hermes WebUI password" Type="Variable" Display="advanced" Required="false" Mask="true">hermes</Config>
+    <Config Name="HERMES_WEBUI_PASSWORD" Target="HERMES_WEBUI_PASSWORD" Default="hermes" Mode="" Description="Hermes WebUI password. Change this immediately after install." Type="Variable" Display="advanced" Required="false" Mask="true">hermes</Config>
     <Config Name="TZ" Target="TZ" Default="UTC" Mode="" Description="Container timezone" Type="Variable" Display="advanced" Required="false" Mask="false">UTC</Config>
 </Container>
