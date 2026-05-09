@@ -50,6 +50,12 @@ RUN chmod 755 /usr/local/bin/hermes-suite-entrypoint /usr/local/bin/hermes-suite
     && uv pip install --python /opt/hermes/.venv/bin/python -r /opt/hermes-webui/requirements.txt \
     && chown -R hermes:hermes /home/hermes /home/hermeswebui /opt/hermes-webui
 
+# Create a reference copy of /opt/hermes for migration compatibility.
+# If a user mounts the legacy hermes_shared_volume at /opt/hermes, the entrypoint
+# uses this bundle to seed the mounted volume with the current Hermes install.
+RUN touch /opt/hermes/.hermes-suite-bundled \
+    && cp -a /opt/hermes /opt/hermes.image-bundle
+
 ENV LANG=en_US.utf8 \
     LC_ALL=C \
     PYTHONDONTWRITEBYTECODE=1 \
