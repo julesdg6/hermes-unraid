@@ -2,6 +2,31 @@
 
 Hermes Suite packages **Hermes Agent**, **Hermes Dashboard**, and **Hermes WebUI** into one Unraid-friendly container image so you can install a single Community App instead of managing three linked containers and a shared Docker volume.
 
+## Installing on Unraid
+
+### Unraid 7 (current)
+
+Unraid 7 no longer auto-discovers Community Applications templates from GitHub URL entries the same way as v6. The recommended method is to `curl` the template directly into your user-templates folder and then use the **Add Container** screen in the Docker tab.
+
+Run the following in the Unraid terminal (or via SSH):
+
+```bash
+curl -L https://raw.githubusercontent.com/julesdg6/hermes-unraid/main/unraid/hermes-suite.xml \
+  -o /boot/config/plugins/dockerMan/templates-user/hermes-suite.xml
+```
+
+After the download completes, go to **Docker → Add Container** in the Unraid web UI, click **Select a template**, and choose **hermes-suite** from the list.
+
+### Unraid 6
+
+On Unraid 6 with the Community Applications plugin installed, paste the template URL into the **Template URL** field under **Apps → Install Application → Add custom template**:
+
+```
+https://raw.githubusercontent.com/julesdg6/hermes-unraid/main/unraid/hermes-suite.xml
+```
+
+Then click **Apply** and configure the container as normal.
+
 ## Why this image exists
 
 The existing three-container setup works, but it depends on startup order and a shared `/opt/hermes` Docker named volume. This repository removes that extra moving part by extending the official `nousresearch/hermes-agent:latest` image and layering the latest `ghcr.io/nesquena/hermes-webui:latest` application files into the same container.
