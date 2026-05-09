@@ -33,7 +33,21 @@ REQUIRED_CONFIG_TARGETS = {
     "DASHBOARD_HOST",
     "TZ",
     "/home/hermeswebui/workspace",
+    "/opt/hermes",
 }
+LEGACY_VOLUME_TARGET = "/opt/hermes"
+LEGACY_VOLUME_EXPECTED_ATTRIBUTES = {
+    "Type": "Path",
+    "Display": "advanced",
+    "Required": "false",
+    "Default": "",
+}
+LEGACY_VOLUME_DESCRIPTION_PHRASES = (
+    "Docker named volume",
+    "hermes_shared_volume",
+    "leave blank",
+    "not a host filesystem path",
+)
 
 
 def main() -> int:
@@ -63,6 +77,27 @@ def main() -> int:
     missing_targets = sorted(REQUIRED_CONFIG_TARGETS - targets)
     if missing_targets:
         raise SystemExit(f"missing required Config targets: {', '.join(missing_targets)}")
+
+    legacy_volume_config = next(
+        (config for config in configs if config.attrib.get("Target") == LEGACY_VOLUME_TARGET),
+        None,
+    )
+    if legacy_volume_config is None:
+        raise SystemExit(f"missing legacy {LEGACY_VOLUME_TARGET} migration config")
+
+    for attribute, expected_value in LEGACY_VOLUME_EXPECTED_ATTRIBUTES.items():
+        actual_value = legacy_volume_config.attrib.get(attribute, "")
+        if actual_value != expected_value:
+            raise SystemExit(
+                f"{LEGACY_VOLUME_TARGET} migration config must set {attribute}={expected_value!r}, got {actual_value!r}"
+            )
+
+    description = legacy_volume_config.attrib.get("Description", "")
+    for phrase in LEGACY_VOLUME_DESCRIPTION_PHRASES:
+        if phrase.lower() not in description.lower():
+            raise SystemExit(
+                f"{LEGACY_VOLUME_TARGET} migration config description must mention {phrase!r}"
+            )
 
     print(f"Template validation passed for {template_path}")
     return 0
