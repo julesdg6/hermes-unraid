@@ -1,0 +1,72 @@
+name: upstream-change
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 */6 * * *'
+
+jobs:
+  detect-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - name: Pull upstream images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull nousresearch/hermes-agent:latest >/dev/null
+          docker pull ghcr.io/nesquena/hermes-webui:latest >/dev/null
+
+      - name: Compare upstream metadata with current published image
+        id: compare
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:latest
+        run: |
+          set -euo pipefail
+          current_agent_digest="$(docker image inspect nousresearch/hermes-agent:latest --format '{{index .RepoDigests 0}}' | sed 's/.*@//')"
+          current_webui_digest="$(docker image inspect ghcr.io/nesquena/hermes-webui:latest --format '{{index .RepoDigests 0}}' | sed 's/.*@//')"
+          current_agent_commit="$(git ls-remote https://github.com/NousResearch/hermes-agent.git HEAD | cut -f1)"
+          current_webui_commit="$(git ls-remote https://github.com/nesquena/hermes-webui.git HEAD | cut -f1)"
+
+          published_agent_digest=""
+          published_webui_digest=""
+          published_agent_commit=""
+          published_webui_commit=""
+
+          if docker pull "$IMAGE" >/dev/null 2>&1; then
+            published_agent_digest="$(docker image inspect "$IMAGE" --format '{{index .Config.Labels "io.hermes.agent.digest"}}')"
+            published_webui_digest="$(docker image inspect "$IMAGE" --format '{{index .Config.Labels "io.hermes.webui.digest"}}')"
+            published_agent_commit="$(docker image inspect "$IMAGE" --format '{{index .Config.Labels "io.hermes.agent.commit"}}')"
+            published_webui_commit="$(docker image inspect "$IMAGE" --format '{{index .Config.Labels "io.hermes.webui.commit"}}')"
+          fi
+
+          changed=false
+          if [[ "$current_agent_digest" != "$published_agent_digest" ]]; then changed=true; fi
+          if [[ "$current_webui_digest" != "$published_webui_digest" ]]; then changed=true; fi
+          if [[ "$current_agent_commit" != "$published_agent_commit" ]]; then changed=true; fi
+          if [[ "$current_webui_commit" != "$published_webui_commit" ]]; then changed=true; fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "Current agent digest: $current_agent_digest"
+          echo "Published agent digest: ${published_agent_digest:-<none>}"
+          echo "Current webui digest: $current_webui_digest"
+          echo "Published webui digest: ${published_webui_digest:-<none>}"
+          echo "Current agent commit: $current_agent_commit"
+          echo "Published agent commit: ${published_agent_commit:-<none>}"
+          echo "Current webui commit: $current_webui_commit"
+          echo "Published webui commit: ${published_webui_commit:-<none>}"
+
+  rebuild:
+    needs: detect-upstream
+    if: needs.detect-upstream.outputs.changed == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      push_image: true
+      reason: upstream digest or commit changed
