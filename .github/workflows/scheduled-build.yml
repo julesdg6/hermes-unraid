@@ -6,6 +6,9 @@ on:
 
 jobs:
   scheduled-build:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yml
     with:
       push_image: true

@@ -11,6 +11,9 @@ on:
 
 jobs:
   manual-build:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yml
     with:
       push_image: ${{ inputs.push_image }}

@@ -128,7 +128,7 @@ The repo also includes workflows for:
 A basic smoke test script is included:
 
 ```bash
-/home/runner/work/hermes-unraid/hermes-unraid/scripts/smoke-test.sh
+./scripts/smoke-test.sh
 ```
 
 It builds the image, starts a container, checks all three ports, and verifies the gateway, dashboard, and WebUI endpoints.

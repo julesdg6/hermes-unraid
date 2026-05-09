@@ -16,6 +16,8 @@ on:
 jobs:
   validate-template:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

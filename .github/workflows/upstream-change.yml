@@ -8,6 +8,8 @@ on:
 jobs:
   detect-upstream:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       changed: ${{ steps.compare.outputs.changed }}
     steps:
@@ -61,6 +63,9 @@ jobs:
   rebuild:
     needs: detect-upstream
     if: needs.detect-upstream.outputs.changed == 'true'
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yml
     with:
       push_image: true
