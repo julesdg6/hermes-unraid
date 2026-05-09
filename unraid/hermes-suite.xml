@@ -21,8 +21,8 @@ Hermes Suite combines Hermes Agent, Hermes Dashboard, and Hermes WebUI into one 
 This template keeps compatibility with the existing Hermes appdata layout used by mmartial's Hermes Agent, Dashboard, and WebUI templates.&#xD;
 Reuse the same Hermes home path at /mnt/user/appdata/hermes-agent/hermes-home and the same workspace path at /mnt/user/appdata/hermes-agent/workspace.&#xD;
 &#xD;
-The old shared hermes_shared_volume Docker named volume can be optionally mapped to /opt/hermes (see the advanced settings) for migration compatibility.&#xD;
-The container will seed the mounted volume with the current Hermes install on first startup. New installs should leave that field blank.&#xD;
+Migration from old three-container setups is experimental and fresh installs are safest.&#xD;
+Do not delete old containers, appdata folders, or Docker volumes before backup and verification. The legacy /opt/hermes mapping is compatibility-only and usually Hermes source/runtime content, not user config.&#xD;
 &#xD;
 Warning: Hermes Dashboard and Hermes WebUI can expose sensitive configuration data, including API key management.&#xD;
 Do not publish them directly to the internet without additional protection. Prefer LAN-only access, Tailscale, a VPN, or a reverse proxy with authentication.&#xD;
@@ -46,7 +46,7 @@ Do not publish them directly to the internet without additional protection. Pref
     <Config Name="HERMES_HOME" Target="HERMES_HOME" Default="/home/hermes/.hermes" Mode="" Description="Hermes Agent home directory inside the container" Type="Variable" Display="always" Required="true" Mask="false">/home/hermes/.hermes</Config>
     <Config Name="Hermes Home Path" Target="/home/hermes/.hermes" Default="/mnt/user/appdata/hermes-agent/hermes-home" Mode="rw" Description="Existing Hermes Agent appdata path. Reuse this when migrating from the three-container setup." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/hermes-agent/hermes-home</Config>
     <Config Name="Hermes Workspace Path" Target="/home/hermeswebui/workspace" Default="/mnt/user/appdata/hermes-agent/workspace" Mode="rw" Description="Workspace path used by Hermes WebUI" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/hermes-agent/workspace</Config>
-    <Config Name="Hermes Shared Source Volume (Legacy Migration)" Target="/opt/hermes" Default="" Mode="rw" Description="Optional Docker named volume for migration from the old three-container mmartial templates. Enter hermes_shared_volume to reuse the old shared volume, or leave blank for fresh installs. This is a Docker named volume, not a host filesystem path. The container will update the mounted volume with the current Hermes install on startup." Type="Path" Display="advanced" Required="false" Mask="false"></Config>
+    <Config Name="Legacy /opt/hermes Source Volume - Experimental, backup first" Target="/opt/hermes" Default="" Mode="rw" Description="Optional experimental compatibility mount for old three-container installs. This is usually the Hermes source/runtime volume, not user config. Do not use this unless you have backed up your old appdata and Docker volumes. Enter hermes_shared_volume only if you know you need it, or leave blank for fresh installs. This is a Docker named volume, not a host filesystem path." Type="Path" Display="advanced" Required="false" Mask="false"></Config>
 
     <Config Name="HERMES_GATEWAY_URL" Target="HERMES_GATEWAY_URL" Default="http://127.0.0.1:8642" Mode="" Description="Internal gateway URL used by the combined container and health checks" Type="Variable" Display="advanced" Required="false" Mask="false">http://127.0.0.1:8642</Config>
     <Config Name="API_SERVER_KEY" Target="API_SERVER_KEY" Default="" Mode="" Description="Optional Hermes API bearer token. Leave blank to let Hermes Suite generate and persist one automatically." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>

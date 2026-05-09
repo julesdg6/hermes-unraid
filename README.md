@@ -69,7 +69,7 @@ Recommended Unraid host paths:
 - `/mnt/user/appdata/hermes-agent/hermes-home` -> `/home/hermes/.hermes`
 - `/mnt/user/appdata/hermes-agent/workspace` -> `/home/hermeswebui/workspace`
 
-The `/opt/hermes` install path is kept internally by the image. Only map the legacy Docker named volume `hermes_shared_volume` there when migrating from the old three-container setup (see the advanced template settings). Do not use a host filesystem path for that field.
+The `/opt/hermes` install path is kept internally by the image. The legacy `hermes_shared_volume` mapping is compatibility-only and experimental. It is usually the Hermes source/runtime tree, not guaranteed user config. Leave that field blank for fresh installs.
 
 ## Compatibility with the existing three-template setup
 
@@ -86,26 +86,54 @@ This container is designed to preserve compatibility with mmartial's Hermes temp
 - existing Hermes home path `/mnt/user/appdata/hermes-agent/hermes-home`
 - existing workspace path `/mnt/user/appdata/hermes-agent/workspace`
 
-The old named shared volume mounted at `/opt/hermes` is supported as an optional migration path. When you map the Docker named volume `hermes_shared_volume` to `/opt/hermes`, the container detects that the path has been externally mounted and automatically updates it with the current Hermes install on startup. New installs should leave `/opt/hermes` unmounted.
+The old named shared volume mounted at `/opt/hermes` is supported only as an optional experimental compatibility path. In many installs it is only Hermes source/runtime content, not user data. Do not assume `/opt/hermes` or `hermes_shared_volume` contains your user config.
 
 ## Migration from the three-container setup
+
+### Migration warning
+
+Hermes Suite is currently safest for fresh installs.
+
+Migration from the older three-container setup is experimental. The old templates used a mix of appdata folders and Docker named volumes. Depending on install history, your real user data may be in a different location than expected.
+
+Before migrating, back up all Hermes-related appdata and volumes. Do not delete your old containers, appdata, or Docker volumes until you have confirmed Hermes Suite is reading your previous config, sessions, kanban database, settings, memory, and workspace.
+
+The legacy `/opt/hermes` mapping is for compatibility only. It is not guaranteed to contain your user config. In many installs, `/opt/hermes` is only the Hermes source/runtime tree.
+
+Do **not**:
+
+- delete old Hermes containers, appdata folders, or Docker volumes before backup and verification
+- run `rm -rf` against any Hermes appdata path during migration
+- assume `/opt/hermes` contains your user data
+- assume `hermes_shared_volume` contains your user config
+
+### Safe backup commands
+
+```bash
+mkdir -p /mnt/user/backups/hermes-migration-$(date +%F)
+cp -a /mnt/user/appdata/hermes-agent /mnt/user/backups/hermes-migration-$(date +%F)/ 2>/dev/null || true
+cp -a /mnt/user/appdata/hermes-dashboard /mnt/user/backups/hermes-migration-$(date +%F)/ 2>/dev/null || true
+cp -a /mnt/user/appdata/hermes-webui /mnt/user/backups/hermes-migration-$(date +%F)/ 2>/dev/null || true
+docker run --rm -v hermes_shared_volume:/old -v /mnt/user/backups/hermes-migration-$(date +%F):/backup alpine sh -c "cp -a /old /backup/hermes_shared_volume" 2>/dev/null || true
+```
+
+### Verification commands
+
+```bash
+find /mnt/user/appdata -iname 'config.yaml' -o -iname 'kanban.db' -o -iname 'state.db'
+docker volume ls | grep hermes
+docker inspect HermesSuite --format '{{range .Mounts}}{{println .Type "|" .Source "|" .Destination}}{{end}}'
+```
+
+### Migration steps
 
 1. Stop the old **Hermes Agent**, **Hermes Dashboard**, and **Hermes WebUI** containers.
 2. Leave `/mnt/user/appdata/hermes-agent/hermes-home` in place.
 3. Leave `/mnt/user/appdata/hermes-agent/workspace` in place.
 4. Install **Hermes Suite** and point it at those same two host paths.
 5. Keep `HERMES_UID`, `HERMES_GID`, `WANTED_UID`, and `WANTED_GID` aligned unless you have a specific reason not to.
-6. Start the new container and verify ports `8642`, `9119`, and `8787` respond.
-
-### Notes about the old shared volume
-
-In the old layout, `hermes_shared_volume` was a named Docker volume mounted to `/opt/hermes` in each of the three containers. It held the Hermes source tree and runtime shared between them.
-
-In Hermes Suite the same source tree is baked into the image, so most users do **not** need to migrate the old volume at all.
-
-If you want to reuse the old named volume (for example, to preserve any custom additions you made inside it), enter `hermes_shared_volume` in the **Hermes Shared Source Volume (Legacy Migration)** field in the template's advanced settings. That field is for a Docker named volume, not a host path such as `/mnt/user/...`. On startup the container detects the external mount and updates the volume with the current Hermes install, so the old code is automatically replaced by the latest version.
-
-If you manually added files into that named volume, back them up first and copy only the pieces you still need into your persistent Hermes data directory (`HERMES_HOME`) before deleting the old volume.
+6. Keep the legacy `/opt/hermes` field blank unless you have already backed up and verified that you need it.
+7. Start the new container and verify ports `8642`, `9119`, and `8787` respond.
 
 ## Security warning
 
