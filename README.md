@@ -62,11 +62,14 @@ Access them at:
 - Hermes data: `/home/hermes/.hermes`
 - WebUI workspace: `/home/hermeswebui/workspace`
 - WebUI state/config/cache: `/home/hermeswebui/.hermes/webui`
+- Hermes install (internal): `/opt/hermes`
 
 Recommended Unraid host paths:
 
 - `/mnt/user/appdata/hermes-agent/hermes-home` -> `/home/hermes/.hermes`
 - `/mnt/user/appdata/hermes-agent/workspace` -> `/home/hermeswebui/workspace`
+
+The `/opt/hermes` install path is kept internally by the image. Optionally map the legacy `hermes_shared_volume` there only when migrating from the old three-container setup (see the advanced template settings).
 
 ## Compatibility with the existing three-template setup
 
@@ -83,7 +86,7 @@ This container is designed to preserve compatibility with mmartial's Hermes temp
 - existing Hermes home path `/mnt/user/appdata/hermes-agent/hermes-home`
 - existing workspace path `/mnt/user/appdata/hermes-agent/workspace`
 
-The old named shared volume mounted at `/opt/hermes` is **not required anymore**. The combined image keeps `/opt/hermes` inside the container so old expectations about the shared source tree still work internally.
+The old named shared volume mounted at `/opt/hermes` is supported as an optional migration path. When you map `hermes_shared_volume` to `/opt/hermes`, the container detects that the path has been externally mounted and automatically updates it with the current Hermes install on startup. New installs should leave `/opt/hermes` unmounted.
 
 ## Migration from the three-container setup
 
@@ -96,9 +99,13 @@ The old named shared volume mounted at `/opt/hermes` is **not required anymore**
 
 ### Notes about the old shared volume
 
-In the old layout, the shared Docker volume was mainly used to expose Hermes source files to the separate Dashboard and WebUI containers. The combined image already contains that source tree internally, so most users do **not** need to migrate anything from the old named volume.
+In the old layout, `hermes_shared_volume` was a named Docker volume mounted to `/opt/hermes` in each of the three containers. It held the Hermes source tree and runtime shared between them.
 
-If you manually added files into that named volume, back them up first and copy only the pieces you still need into your persistent Hermes data directory before deleting the old volume.
+In Hermes Suite the same source tree is baked into the image, so most users do **not** need to migrate the old volume at all.
+
+If you want to reuse the old named volume (for example, to preserve any custom additions you made inside it), map it to `/opt/hermes` using the **Hermes Install Path (Legacy Migration)** field in the template's advanced settings. On startup the container detects the external mount and updates the volume with the current Hermes install, so the old code is automatically replaced by the latest version.
+
+If you manually added files into that named volume, back them up first and copy only the pieces you still need into your persistent Hermes data directory (`HERMES_HOME`) before deleting the old volume.
 
 ## Security warning
 

@@ -116,6 +116,26 @@ PY
   upsert_dotenv API_SERVER_KEY "$API_SERVER_KEY"
 }
 
+prepare_install_dir() {
+  # When the legacy hermes_shared_volume (or any external volume/bind-mount) is mapped
+  # to /opt/hermes, the image's sentinel file is absent from the mounted path.
+  # In that case, rsync the current image bundle into the mount so the container runs
+  # the up-to-date Hermes install rather than whatever was in the old volume.
+  #
+  # The sentinel file (.hermes-suite-bundled) is included in the rsync, so this seeding
+  # runs exactly once per external volume: subsequent container starts find the sentinel
+  # and skip the rsync. After migration is complete, remove the /opt/hermes path mapping
+  # from the template so the image-internal install is used directly.
+  if [[ ! -f "${INSTALL_DIR}/.hermes-suite-bundled" ]]; then
+    if [[ -d /opt/hermes.image-bundle ]]; then
+      log "Detected externally-mounted ${INSTALL_DIR}; seeding from image bundle for migration compatibility"
+      rsync -a /opt/hermes.image-bundle/ "${INSTALL_DIR}/"
+    else
+      log "Warning: ${INSTALL_DIR} appears to be externally mounted but no image bundle found; continuing as-is"
+    fi
+  fi
+}
+
 prepare_runtime_layout() {
   mkdir -p "$HERMES_HOME" "$HERMES_WORKSPACE" /home/hermeswebui
   mkdir -p "$(dirname "$HERMES_WEBUI_STATE_DIR")"
@@ -196,6 +216,7 @@ if [[ "$(id -u)" != "0" ]]; then
 fi
 
 prepare_user hermes "$HERMES_UID" "$HERMES_GID"
+prepare_install_dir
 prepare_runtime_layout
 bootstrap_home
 ensure_api_server_key
