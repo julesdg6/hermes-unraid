@@ -47,7 +47,11 @@ def main() -> int:
     if root.tag != "Container":
         raise SystemExit("template root element must be <Container>")
 
-    missing_fields = [field for field in REQUIRED_FIELDS if not (root.findtext(field) or "").strip()]
+    missing_fields = []
+    for field in REQUIRED_FIELDS:
+        value = root.findtext(field)
+        if not (value or "").strip():
+            missing_fields.append(field)
     if missing_fields:
         raise SystemExit(f"missing required fields: {', '.join(missing_fields)}")
 
