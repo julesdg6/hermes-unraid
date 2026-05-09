@@ -19,7 +19,7 @@ jobs:
         run: docker build -t hermes-suite:trivy .
 
       - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: hermes-suite:trivy
           format: table
