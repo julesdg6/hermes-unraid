@@ -43,8 +43,11 @@ LEGACY_VOLUME_EXPECTED_ATTRIBUTES = {
     "Default": "",
 }
 LEGACY_VOLUME_DESCRIPTION_PHRASES = (
+    "experimental",
     "Docker named volume",
     "hermes_shared_volume",
+    "not user config",
+    "backed up",
     "leave blank",
     "not a host filesystem path",
 )
