@@ -35,6 +35,19 @@ REQUIRED_CONFIG_TARGETS = {
     "/home/hermeswebui/workspace",
     "/opt/hermes",
 }
+LEGACY_VOLUME_TARGET = "/opt/hermes"
+LEGACY_VOLUME_EXPECTED_ATTRIBUTES = {
+    "Type": "Path",
+    "Display": "advanced",
+    "Required": "false",
+    "Default": "",
+}
+LEGACY_VOLUME_DESCRIPTION_PHRASES = (
+    "Docker named volume",
+    "hermes_shared_volume",
+    "leave blank",
+    "not a host filesystem path",
+)
 
 
 def main() -> int:
@@ -66,35 +79,24 @@ def main() -> int:
         raise SystemExit(f"missing required Config targets: {', '.join(missing_targets)}")
 
     legacy_volume_config = next(
-        (config for config in configs if config.attrib.get("Target") == "/opt/hermes"),
+        (config for config in configs if config.attrib.get("Target") == LEGACY_VOLUME_TARGET),
         None,
     )
     if legacy_volume_config is None:
-        raise SystemExit("missing legacy /opt/hermes migration config")
+        raise SystemExit(f"missing legacy {LEGACY_VOLUME_TARGET} migration config")
 
-    expected_attributes = {
-        "Type": "Path",
-        "Display": "advanced",
-        "Required": "false",
-        "Default": "",
-    }
-    for attribute, expected_value in expected_attributes.items():
+    for attribute, expected_value in LEGACY_VOLUME_EXPECTED_ATTRIBUTES.items():
         actual_value = legacy_volume_config.attrib.get(attribute, "")
         if actual_value != expected_value:
             raise SystemExit(
-                f"/opt/hermes migration config must set {attribute}={expected_value!r}, got {actual_value!r}"
+                f"{LEGACY_VOLUME_TARGET} migration config must set {attribute}={expected_value!r}, got {actual_value!r}"
             )
 
     description = legacy_volume_config.attrib.get("Description", "")
-    for phrase in (
-        "Docker named volume",
-        "hermes_shared_volume",
-        "leave blank",
-        "not a host filesystem path",
-    ):
+    for phrase in LEGACY_VOLUME_DESCRIPTION_PHRASES:
         if phrase.lower() not in description.lower():
             raise SystemExit(
-                f"/opt/hermes migration config description must mention {phrase!r}"
+                f"{LEGACY_VOLUME_TARGET} migration config description must mention {phrase!r}"
             )
 
     print(f"Template validation passed for {template_path}")
