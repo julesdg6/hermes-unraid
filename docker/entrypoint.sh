@@ -116,6 +116,21 @@ PY
   upsert_dotenv API_SERVER_KEY "$API_SERVER_KEY"
 }
 
+configure_gateway_defaults() {
+  # Default to allowing all gateway users when no platform-specific allowlists
+  # (e.g. TELEGRAM_ALLOWED_USERS) are configured, suppressing the
+  # "No user allowlists configured" startup warning.
+  # Override by setting GATEWAY_ALLOW_ALL_USERS=false and configuring
+  # platform allowlists such as TELEGRAM_ALLOWED_USERS.
+  export GATEWAY_ALLOW_ALL_USERS="${GATEWAY_ALLOW_ALL_USERS:-true}"
+  upsert_dotenv GATEWAY_ALLOW_ALL_USERS "$GATEWAY_ALLOW_ALL_USERS"
+
+  # Remove stale SQLite WAL/journal files so the gateway does not encounter a
+  # "database is locked" error on startup after an unclean container shutdown.
+  local db="$HERMES_HOME/state.db"
+  rm -f "${db}-wal" "${db}-shm" "${db}-journal" 2>/dev/null || true
+}
+
 prepare_install_dir() {
   # When the legacy hermes_shared_volume (or any external volume/bind-mount) is mapped
   # to /opt/hermes, the image's sentinel file is absent from the mounted path.
@@ -220,6 +235,7 @@ prepare_install_dir
 prepare_runtime_layout
 bootstrap_home
 ensure_api_server_key
+configure_gateway_defaults
 
 log "Gateway API auth configured with a ${#API_SERVER_KEY}-character key"
 log "Hermes WebUI agent source is ${HERMES_WEBUI_AGENT_DIR}"
@@ -230,10 +246,14 @@ dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASH
 if [[ "$DASHBOARD_HOST" != "127.0.0.1" && "$DASHBOARD_HOST" != "localhost" ]]; then
   dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" --no-open --insecure)
 fi
+
+# Wait for gateway to finish initializing its SQLite database before launching
+# dashboard, which also opens the shared state.db — concurrent opens cause a
+# "database is locked" warning in the gateway log.
+wait_for_url gateway "$GATEWAY_HEALTH_URL"
 start_service dashboard "${dashboard_command[@]}"
 start_service webui gosu hermes bash -lc "cd '$WEBUI_DIR' && export HOME=/home/hermeswebui HERMES_WEBUI_AGENT_DIR='$INSTALL_DIR' && exec /opt/hermes/.venv/bin/python server.py"
 
-wait_for_url gateway "$GATEWAY_HEALTH_URL"
 wait_for_url dashboard "http://127.0.0.1:${DASHBOARD_PORT}/"
 wait_for_url webui "http://127.0.0.1:${WEBUI_PORT}/health"
 
