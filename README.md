@@ -133,8 +133,9 @@ docker exec --user 99:100 -it Hermes-Suite bash
 To run the Hermes CLI inside the container:
 
 ```bash
-source /opt/hermes/.venv/bin/activate
-hermes
+hermes model
+hermes doctor
+hermes chat
 ```
 
 ## Updating

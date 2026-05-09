@@ -71,7 +71,15 @@ ENV LANG=en_US.utf8 \
     WEBUI_HOST=0.0.0.0 \
     WEBUI_PORT=8787 \
     DASHBOARD_HOST=0.0.0.0 \
-    DASHBOARD_PORT=9119
+    DASHBOARD_PORT=9119 \
+    VIRTUAL_ENV=/opt/hermes/.venv \
+    PATH=/opt/hermes/.venv/bin:/opt/hermes:$PATH
+
+RUN printf '%s\n' \
+    'export VIRTUAL_ENV=/opt/hermes/.venv' \
+    'export PATH=/opt/hermes/.venv/bin:/opt/hermes:$PATH' \
+    > /etc/profile.d/hermes.sh \
+    && chmod 644 /etc/profile.d/hermes.sh
 
 EXPOSE 8642 9119 8787
 
