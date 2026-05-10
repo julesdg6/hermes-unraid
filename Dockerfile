@@ -79,7 +79,10 @@ RUN printf '%s\n' \
     'export VIRTUAL_ENV=/opt/hermes/.venv' \
     'export PATH=/opt/hermes/.venv/bin:/opt/hermes:$PATH' \
     > /etc/profile.d/hermes.sh \
-    && chmod 644 /etc/profile.d/hermes.sh
+    && chmod 644 /etc/profile.d/hermes.sh \
+    && touch /home/hermes/.bashrc \
+    && printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hermes/.bashrc \
+    && chown hermes:hermes /home/hermes/.bashrc
 
 EXPOSE 8642 9119 8787
 
