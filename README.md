@@ -60,7 +60,7 @@ Access them at:
 ## Default paths
 
 - Hermes data: `/home/hermes/.hermes`
-- Persisted SSH keys: `/home/hermes/.hermes/.ssh` (available at `/home/hermes/.ssh`)
+- Persisted SSH keys: `/home/hermes/.hermes/ssh` (available at `/home/hermes/.ssh`)
 - Persisted user launcher scripts: `/home/hermes/.hermes/bin` (included in `PATH`)
 - WebUI workspace: `/home/hermeswebui/workspace`
 - WebUI state/config/cache: `/home/hermeswebui/.hermes/webui`
