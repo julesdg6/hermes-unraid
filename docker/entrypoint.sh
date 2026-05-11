@@ -19,7 +19,6 @@ HERMES_GATEWAY_URL="${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}"
 HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-$HERMES_HOME/runtime}"
 HERMES_USER_BIN_DIR="${HERMES_USER_BIN_DIR:-$HERMES_HOME/bin}"
 HERMES_USER_SSH_DIR="${HERMES_USER_SSH_DIR:-$HERMES_HOME/.ssh}"
-mkdir -p "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR" 2>/dev/null || true
 
 if [[ "$HERMES_GATEWAY_URL" == */health ]]; then
   GATEWAY_HEALTH_URL="${GATEWAY_HEALTH_URL:-$HERMES_GATEWAY_URL}"
@@ -92,17 +91,17 @@ sync_profile_launchers() {
     launcher_path="/usr/local/bin/$launcher"
     persisted_path="$HERMES_USER_BIN_DIR/$launcher"
 
-    if [[ -f "$launcher_path" && ! -L "$launcher_path" && ! -f "$persisted_path" ]]; then
-      cp -a "$launcher_path" "$persisted_path"
-    fi
-    if [[ -L "$launcher_path" && ! -f "$persisted_path" ]]; then
-      source_path="$(readlink -f "$launcher_path" 2>/dev/null || true)"
+    if [[ ! -f "$persisted_path" && ( -f "$launcher_path" || -L "$launcher_path" ) ]]; then
+      source_path="$launcher_path"
+      if [[ -L "$launcher_path" ]]; then
+        source_path="$(readlink -f "$launcher_path" 2>/dev/null || true)"
+      fi
       if [[ -n "$source_path" && "$source_path" != "$persisted_path" && -f "$source_path" ]]; then
         cp -a "$source_path" "$persisted_path"
       fi
     fi
     if [[ -f "$persisted_path" ]]; then
-      chmod 755 "$persisted_path" || log "Warning: could not set execute permissions on persisted launcher $persisted_path"
+      chmod 755 "$persisted_path" || echo "[hermes-suite] Warning: could not set execute permissions on persisted launcher $persisted_path"
       ln -sfn "$persisted_path" "$launcher_path"
     fi
   done < <(find "$profile_dir" -mindepth 1 -maxdepth 1 -exec basename "{}" \; 2>/dev/null | sort -u)
@@ -204,7 +203,7 @@ prepare_runtime_layout() {
 
   chown -R hermes:hermes /home/hermes /home/hermeswebui "$HERMES_HOME" "$HERMES_WORKSPACE" "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR"
   chmod 755 /home/hermes /home/hermeswebui
-  chmod 700 "$HERMES_USER_SSH_DIR" 2>/dev/null || true
+  chmod 700 "$HERMES_USER_SSH_DIR"
   if [[ -f "$HERMES_HOME/config.yaml" ]]; then
     chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
     chmod 640 "$HERMES_HOME/config.yaml" 2>/dev/null || true
