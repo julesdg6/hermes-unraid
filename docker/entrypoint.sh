@@ -19,6 +19,7 @@ HERMES_GATEWAY_URL="${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}"
 HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-$HERMES_HOME/runtime}"
 HERMES_USER_BIN_DIR="${HERMES_USER_BIN_DIR:-$HERMES_HOME/bin}"
 HERMES_USER_SSH_DIR="${HERMES_USER_SSH_DIR:-$HERMES_HOME/ssh}"
+HERMES_ROOT_SSH_DIR="${HERMES_ROOT_SSH_DIR:-$HERMES_HOME/root-ssh}"
 HERMES_LEGACY_USER_SSH_DIR="${HERMES_HOME}/.ssh"
 
 if [[ "$HERMES_GATEWAY_URL" == */health ]]; then
@@ -29,7 +30,7 @@ fi
 
 export HERMES_HOME HERMES_UID HERMES_GID WANTED_UID WANTED_GID
 export HERMES_WORKSPACE HERMES_WEBUI_DEFAULT_WORKSPACE HERMES_WEBUI_STATE_DIR
-export HERMES_RUNTIME_DIR HERMES_USER_BIN_DIR HERMES_USER_SSH_DIR
+export HERMES_RUNTIME_DIR HERMES_USER_BIN_DIR HERMES_USER_SSH_DIR HERMES_ROOT_SSH_DIR
 export HERMES_WEBUI_AGENT_DIR="${HERMES_WEBUI_AGENT_DIR:-$INSTALL_DIR}"
 export HERMES_WEBUI_HOST="$WEBUI_HOST" HERMES_WEBUI_PORT="$WEBUI_PORT"
 export WEBUI_HOST WEBUI_PORT DASHBOARD_HOST DASHBOARD_PORT
@@ -241,6 +242,48 @@ prepare_install_dir() {
   fi
 }
 
+setup_root_ssh() {
+  mkdir -p "$HERMES_ROOT_SSH_DIR"
+
+  # Migrate any existing /root/.ssh contents into the persistent directory
+  if [[ -e /root/.ssh && ! -L /root/.ssh ]]; then
+    if [[ -d /root/.ssh ]]; then
+      cp -an /root/.ssh/. "$HERMES_ROOT_SSH_DIR"/
+      rm -rf /root/.ssh
+    fi
+  fi
+
+  # Replace /root/.ssh with a symlink to the persistent directory
+  ln -sfn "$HERMES_ROOT_SSH_DIR" /root/.ssh
+
+  # Create a default SSH config pointing at the persisted Hermes key if one
+  # exists and no config has been written yet
+  local key_file="$HERMES_USER_SSH_DIR/id_ed25519"
+  local config_file="$HERMES_ROOT_SSH_DIR/config"
+  if [[ -f "$key_file" && ! -f "$config_file" ]]; then
+    cat > "$config_file" <<EOF
+Host hermeslab 192.168.1.215
+  HostName 192.168.1.215
+  User hermes
+  IdentityFile $key_file
+  IdentitiesOnly yes
+  PreferredAuthentications publickey
+  PasswordAuthentication no
+  StrictHostKeyChecking accept-new
+EOF
+    log "Created default root SSH config at ${config_file}"
+  fi
+
+  # Ensure root owns its SSH directory so the ssh client accepts the config
+  chown root:root "$HERMES_ROOT_SSH_DIR" 2>/dev/null || true
+  find "$HERMES_ROOT_SSH_DIR" -maxdepth 1 \( -type f -o -type l \) \
+    -exec chown root:root {} \; 2>/dev/null || true
+  chmod 700 "$HERMES_ROOT_SSH_DIR"
+  if [[ -f "$config_file" ]]; then
+    chmod 600 "$config_file"
+  fi
+}
+
 prepare_runtime_layout() {
   mkdir -p "$HERMES_HOME" "$HERMES_WORKSPACE" /home/hermeswebui "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR"
   mkdir -p "$(dirname "$HERMES_WEBUI_STATE_DIR")"
@@ -277,6 +320,10 @@ prepare_runtime_layout() {
     chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
     chmod 640 "$HERMES_HOME/config.yaml" 2>/dev/null || true
   fi
+
+  # Set up persistent root SSH directory and symlink after the hermes chown
+  # so that root ownership can be applied correctly
+  setup_root_ssh
 
   if [[ "$WANTED_UID" != "$HERMES_UID" || "$WANTED_GID" != "$HERMES_GID" ]]; then
     log "WANTED_UID/GID differs from HERMES_UID/GID; Hermes Suite runs all services as the Hermes user, so keep them aligned for shared-path compatibility."
