@@ -125,5 +125,9 @@ docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/home/hermes/.he
 docker exec "$CONTAINER_NAME" bash -lc 'ollama-primary'
 # The legacy .ssh dir inside HERMES_HOME ($HERMES_HOME/.ssh) must be removed after migration
 docker exec "$CONTAINER_NAME" bash -lc 'test ! -d /home/hermes/.hermes/.ssh'
+# Verify root SSH persistence: /root/.ssh must be a symlink to the persistent root-ssh directory
+docker exec "$CONTAINER_NAME" bash -lc 'test "$(readlink -f /root/.ssh)" = "/home/hermes/.hermes/root-ssh"'
+# Verify root SSH config resolves the persisted Hermes key for 192.168.1.215
+docker exec "$CONTAINER_NAME" bash -lc 'ssh -G 192.168.1.215 | grep -q "/home/hermes/.hermes/ssh/id_ed25519"'
 
 echo "Smoke test passed for ${IMAGE_TAG}"
