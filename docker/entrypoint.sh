@@ -18,7 +18,8 @@ HERMES_WEBUI_STATE_DIR="${HERMES_WEBUI_STATE_DIR:-/home/hermeswebui/.hermes/webu
 HERMES_GATEWAY_URL="${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}"
 HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-$HERMES_HOME/runtime}"
 HERMES_USER_BIN_DIR="${HERMES_USER_BIN_DIR:-$HERMES_HOME/bin}"
-HERMES_USER_SSH_DIR="${HERMES_USER_SSH_DIR:-$HERMES_HOME/.ssh}"
+HERMES_USER_SSH_DIR="${HERMES_USER_SSH_DIR:-$HERMES_HOME/ssh}"
+HERMES_LEGACY_USER_SSH_DIR="${HERMES_HOME}/.ssh"
 
 if [[ "$HERMES_GATEWAY_URL" == */health ]]; then
   GATEWAY_HEALTH_URL="${GATEWAY_HEALTH_URL:-$HERMES_GATEWAY_URL}"
@@ -66,7 +67,7 @@ prepare_user() {
 bootstrap_home() {
   gosu hermes bash -lc '
     set -Eeuo pipefail
-    mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home,runtime,bin,.ssh}
+    mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home,runtime,bin,ssh}
     if [[ ! -f "$HERMES_HOME/.env" ]]; then cp /opt/hermes/.env.example "$HERMES_HOME/.env"; fi
     if [[ ! -f "$HERMES_HOME/config.yaml" ]]; then cp /opt/hermes/cli-config.yaml.example "$HERMES_HOME/config.yaml"; fi
     if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then cp /opt/hermes/docker/SOUL.md "$HERMES_HOME/SOUL.md"; fi
@@ -102,15 +103,15 @@ sync_profile_launchers() {
     fi
     if [[ -f "$persisted_path" ]]; then
       chmod 755 "$persisted_path" || echo "[hermes-suite] Warning: could not set execute permissions on persisted launcher $persisted_path"
-      ln -sfn "$persisted_path" "$launcher_path"
     fi
+    ln -sfn "$persisted_path" "$launcher_path"
   done < <(find "$profile_dir" -mindepth 1 -maxdepth 1 -exec basename "{}" \; 2>/dev/null | sort -u)
 }
 
-upsert_dotenv() {
-  local key="$1"
-  local value="$2"
-  local file="$HERMES_HOME/.env"
+upsert_env_file() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
   local tmp
   tmp="$(mktemp)"
 
@@ -119,8 +120,64 @@ upsert_dotenv() {
   fi
   printf '%s=%s\n' "$key" "$value" >> "$tmp"
   mv "$tmp" "$file"
+}
+
+upsert_dotenv() {
+  local key="$1"
+  local value="$2"
+  local file="$HERMES_HOME/.env"
+  upsert_env_file "$file" "$key" "$value"
   chown hermes:hermes "$file" 2>/dev/null || true
   chmod 600 "$file" 2>/dev/null || true
+}
+
+migrate_profile_ssh_keys() {
+  local profile_dir="$HERMES_HOME/profiles"
+  local env_file
+  local terminal_ssh_key
+  local persisted_key
+
+  [[ -d "$profile_dir" ]] || return 0
+  while IFS= read -r env_file; do
+    terminal_ssh_key="$(grep -E '^TERMINAL_SSH_KEY=' "$env_file" | tail -n 1 | cut -d= -f2- || true)"
+    [[ -n "$terminal_ssh_key" ]] || continue
+    if [[ "$terminal_ssh_key" == /root/.ssh/* || "$terminal_ssh_key" == /home/hermes/.ssh/* ]]; then
+      persisted_key="$HERMES_USER_SSH_DIR/${terminal_ssh_key##*/}"
+      if [[ -f "$terminal_ssh_key" && ! -f "$persisted_key" ]]; then
+        cp -a "$terminal_ssh_key" "$persisted_key"
+      fi
+      upsert_env_file "$env_file" TERMINAL_SSH_KEY "$persisted_key"
+      chown hermes:hermes "$env_file" 2>/dev/null || true
+      chmod 600 "$env_file" 2>/dev/null || true
+      log "Updated TERMINAL_SSH_KEY in ${env_file} to persisted path ${persisted_key}"
+    fi
+  done < <(find "$profile_dir" -mindepth 2 -maxdepth 2 -name .env -type f 2>/dev/null | sort)
+}
+
+warn_non_persistent_profile_paths() {
+  local profile_dir="$HERMES_HOME/profiles"
+  local env_file
+  local root_matches
+  local usr_local_matches
+  local home_ssh_matches
+  local home_ssh_persisted=0
+
+  [[ -d "$profile_dir" ]] || return 0
+  if [[ -L /home/hermes/.ssh ]] && [[ "$(readlink -f /home/hermes/.ssh 2>/dev/null || true)" == "$HERMES_USER_SSH_DIR" ]]; then
+    home_ssh_persisted=1
+  fi
+
+  while IFS= read -r env_file; do
+    root_matches="$(grep -E '=/root/' "$env_file" || true)"
+    usr_local_matches="$(grep -E '=/usr/local/' "$env_file" || true)"
+    home_ssh_matches="$(grep -E '=/home/hermes/\.ssh/' "$env_file" || true)"
+    if [[ -n "$root_matches" || -n "$usr_local_matches" || ( $home_ssh_persisted -eq 0 && -n "$home_ssh_matches" ) ]]; then
+      log "Warning: ${env_file} contains profile paths that may not persist across container recreation"
+      [[ -n "$root_matches" ]] && log "Warning: ${env_file} references /root/ paths"
+      [[ -n "$usr_local_matches" ]] && log "Warning: ${env_file} references /usr/local/ paths"
+      [[ $home_ssh_persisted -eq 0 && -n "$home_ssh_matches" ]] && log "Warning: ${env_file} references /home/hermes/.ssh without persistent symlink protection"
+    fi
+  done < <(find "$profile_dir" -mindepth 2 -maxdepth 2 -name .env -type f 2>/dev/null | sort)
 }
 
 ensure_api_server_key() {
@@ -191,15 +248,25 @@ prepare_runtime_layout() {
   if [[ -e /home/hermeswebui/.hermes && ! -L /home/hermeswebui/.hermes ]]; then
     rm -rf /home/hermeswebui/.hermes
   fi
+  if [[ "$HERMES_LEGACY_USER_SSH_DIR" != "$HERMES_USER_SSH_DIR" && -d "$HERMES_LEGACY_USER_SSH_DIR" ]]; then
+    cp -an "$HERMES_LEGACY_USER_SSH_DIR"/. "$HERMES_USER_SSH_DIR"/
+  fi
+  if [[ -e /root/.ssh && ! -L /root/.ssh ]]; then
+    if [[ -d /root/.ssh ]]; then
+      cp -an /root/.ssh/. "$HERMES_USER_SSH_DIR"/
+    fi
+  fi
   if [[ -e /home/hermes/.ssh && ! -L /home/hermes/.ssh ]]; then
     if [[ -d /home/hermes/.ssh ]]; then
-      cp -a /home/hermes/.ssh/. "$HERMES_USER_SSH_DIR"/
+      cp -an /home/hermes/.ssh/. "$HERMES_USER_SSH_DIR"/
     fi
     rm -rf /home/hermes/.ssh
   fi
   ln -sfn "$HERMES_HOME" /home/hermeswebui/.hermes
   ln -sfn "$HERMES_USER_SSH_DIR" /home/hermes/.ssh
   sync_profile_launchers
+  migrate_profile_ssh_keys
+  warn_non_persistent_profile_paths
 
   chown -R hermes:hermes /home/hermes /home/hermeswebui "$HERMES_HOME" "$HERMES_WORKSPACE" "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR"
   chmod 755 /home/hermes /home/hermeswebui

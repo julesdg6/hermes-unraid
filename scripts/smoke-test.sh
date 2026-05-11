@@ -52,6 +52,13 @@ if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
   BUILT_IMAGE=1
 fi
 
+mkdir -p "${HERMES_HOME_DIR}/profiles/ollama-primary"
+mkdir -p "${HERMES_HOME_DIR}/.ssh"
+ssh-keygen -t ed25519 -N '' -f "${HERMES_HOME_DIR}/.ssh/id_ed25519" >/dev/null
+cat > "${HERMES_HOME_DIR}/profiles/ollama-primary/.env" <<'EOF'
+TERMINAL_SSH_KEY=/home/hermes/.ssh/id_ed25519
+EOF
+
 docker run -d --name "$CONTAINER_NAME" \
   -p "${HOST_GATEWAY_PORT}:8642" \
   -p "${HOST_DASHBOARD_PORT}:9119" \
@@ -82,5 +89,35 @@ docker exec "$CONTAINER_NAME" bash -lc 'command -v hermes >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes model --help >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes doctor >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'cd /opt/hermes && ./hermes doctor >/dev/null'
+docker exec "$CONTAINER_NAME" bash -lc "cat > /usr/local/bin/ollama-primary <<'EOF'
+#!/usr/bin/env bash
+echo ollama-primary
+EOF
+chmod 755 /usr/local/bin/ollama-primary"
+
+docker rm -f "$CONTAINER_NAME" >/dev/null
+
+docker run -d --name "$CONTAINER_NAME" \
+  -p "${HOST_GATEWAY_PORT}:8642" \
+  -p "${HOST_DASHBOARD_PORT}:9119" \
+  -p "${HOST_WEBUI_PORT}:8787" \
+  -e HERMES_UID=99 \
+  -e HERMES_GID=100 \
+  -e WANTED_UID=99 \
+  -e WANTED_GID=100 \
+  -v "${HERMES_HOME_DIR}:/home/hermes/.hermes" \
+  -v "${WORKSPACE_DIR}:/home/hermeswebui/workspace" \
+  "$IMAGE_TAG" >/dev/null
+
+wait_for_url gateway "http://127.0.0.1:${HOST_GATEWAY_PORT}/health"
+wait_for_url dashboard "http://127.0.0.1:${HOST_DASHBOARD_PORT}/"
+wait_for_url webui "http://127.0.0.1:${HOST_WEBUI_PORT}/health"
+
+docker exec "$CONTAINER_NAME" bash -lc 'test -f /home/hermes/.hermes/ssh/id_ed25519'
+docker exec "$CONTAINER_NAME" bash -lc 'test -f /home/hermes/.hermes/bin/ollama-primary'
+docker exec "$CONTAINER_NAME" bash -lc 'test "$(readlink -f /home/hermes/.ssh)" = "/home/hermes/.hermes/ssh"'
+docker exec "$CONTAINER_NAME" bash -lc 'test "$(readlink -f /usr/local/bin/ollama-primary)" = "/home/hermes/.hermes/bin/ollama-primary"'
+docker exec "$CONTAINER_NAME" bash -lc 'grep -q "^TERMINAL_SSH_KEY=/home/hermes/.hermes/ssh/id_ed25519$" /home/hermes/.hermes/profiles/ollama-primary/.env'
+docker exec "$CONTAINER_NAME" bash -lc 'ssh-keygen -y -f /home/hermes/.hermes/ssh/id_ed25519 >/dev/null'
 
 echo "Smoke test passed for ${IMAGE_TAG}"
