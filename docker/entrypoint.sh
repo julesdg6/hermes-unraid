@@ -83,6 +83,7 @@ sync_profile_launchers() {
   local launcher
   local launcher_path
   local persisted_path
+  local source_path
 
   [[ -d "$profile_dir" ]] || return 0
   while IFS= read -r launcher; do
@@ -93,8 +94,11 @@ sync_profile_launchers() {
     if [[ -f "$launcher_path" && ! -L "$launcher_path" && ! -f "$persisted_path" ]]; then
       cp -a "$launcher_path" "$persisted_path"
     fi
-    if [[ -L "$launcher_path" ]] && [[ "$(readlink -f "$launcher_path" 2>/dev/null || true)" != "$persisted_path" ]] && [[ ! -f "$persisted_path" ]]; then
-      cp -a "$launcher_path" "$persisted_path"
+    if [[ -L "$launcher_path" && ! -f "$persisted_path" ]]; then
+      source_path="$(readlink -f "$launcher_path" 2>/dev/null || true)"
+      if [[ -n "$source_path" && "$source_path" != "$persisted_path" && -f "$source_path" ]]; then
+        cp -a "$source_path" "$persisted_path"
+      fi
     fi
     if [[ -f "$persisted_path" ]]; then
       chmod 755 "$persisted_path" || log "Warning: could not set execute permissions on persisted launcher $persisted_path"
@@ -189,7 +193,7 @@ prepare_runtime_layout() {
   fi
   if [[ -e /home/hermes/.ssh && ! -L /home/hermes/.ssh ]]; then
     if [[ -d /home/hermes/.ssh ]]; then
-      rsync -a /home/hermes/.ssh/ "$HERMES_USER_SSH_DIR"/
+      cp -a /home/hermes/.ssh/. "$HERMES_USER_SSH_DIR"/
     fi
     rm -rf /home/hermes/.ssh
   fi
