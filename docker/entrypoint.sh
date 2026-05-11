@@ -250,6 +250,8 @@ prepare_runtime_layout() {
   fi
   if [[ "$HERMES_LEGACY_USER_SSH_DIR" != "$HERMES_USER_SSH_DIR" && -d "$HERMES_LEGACY_USER_SSH_DIR" ]]; then
     cp -an "$HERMES_LEGACY_USER_SSH_DIR"/. "$HERMES_USER_SSH_DIR"/
+    rm -rf "$HERMES_LEGACY_USER_SSH_DIR"
+    log "Migrated legacy SSH dir ${HERMES_LEGACY_USER_SSH_DIR} to ${HERMES_USER_SSH_DIR}"
   fi
   if [[ -e /root/.ssh && ! -L /root/.ssh ]]; then
     if [[ -d /root/.ssh ]]; then
