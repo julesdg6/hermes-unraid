@@ -93,11 +93,14 @@ sync_profile_launchers() {
     if [[ -f "$launcher_path" && ! -L "$launcher_path" && ! -f "$persisted_path" ]]; then
       cp -a "$launcher_path" "$persisted_path"
     fi
+    if [[ -L "$launcher_path" ]] && [[ "$(readlink -f "$launcher_path" 2>/dev/null || true)" != "$persisted_path" ]] && [[ ! -f "$persisted_path" ]]; then
+      cp -a "$launcher_path" "$persisted_path"
+    fi
     if [[ -f "$persisted_path" ]]; then
-      chmod 755 "$persisted_path" 2>/dev/null || true
+      chmod 755 "$persisted_path" || log "Warning: could not set execute permissions on persisted launcher $persisted_path"
       ln -sfn "$persisted_path" "$launcher_path"
     fi
-  done < <(find "$profile_dir" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort -u)
+  done < <(find "$profile_dir" -mindepth 1 -maxdepth 1 -exec basename "{}" \; 2>/dev/null | sort -u)
 }
 
 upsert_dotenv() {
