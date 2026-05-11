@@ -16,6 +16,9 @@ HERMES_WORKSPACE="${HERMES_WORKSPACE:-/home/hermeswebui/workspace}"
 HERMES_WEBUI_DEFAULT_WORKSPACE="${HERMES_WEBUI_DEFAULT_WORKSPACE:-$HERMES_WORKSPACE}"
 HERMES_WEBUI_STATE_DIR="${HERMES_WEBUI_STATE_DIR:-/home/hermeswebui/.hermes/webui}"
 HERMES_GATEWAY_URL="${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}"
+HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-$HERMES_HOME/runtime}"
+HERMES_USER_BIN_DIR="${HERMES_USER_BIN_DIR:-$HERMES_HOME/bin}"
+HERMES_USER_SSH_DIR="${HERMES_USER_SSH_DIR:-$HERMES_HOME/.ssh}"
 
 if [[ "$HERMES_GATEWAY_URL" == */health ]]; then
   GATEWAY_HEALTH_URL="${GATEWAY_HEALTH_URL:-$HERMES_GATEWAY_URL}"
@@ -25,12 +28,13 @@ fi
 
 export HERMES_HOME HERMES_UID HERMES_GID WANTED_UID WANTED_GID
 export HERMES_WORKSPACE HERMES_WEBUI_DEFAULT_WORKSPACE HERMES_WEBUI_STATE_DIR
+export HERMES_RUNTIME_DIR HERMES_USER_BIN_DIR HERMES_USER_SSH_DIR
 export HERMES_WEBUI_AGENT_DIR="${HERMES_WEBUI_AGENT_DIR:-$INSTALL_DIR}"
 export HERMES_WEBUI_HOST="$WEBUI_HOST" HERMES_WEBUI_PORT="$WEBUI_PORT"
 export WEBUI_HOST WEBUI_PORT DASHBOARD_HOST DASHBOARD_PORT
 export GATEWAY_HEALTH_URL
 export VIRTUAL_ENV="${VIRTUAL_ENV:-$INSTALL_DIR/.venv}"
-export PATH="$VIRTUAL_ENV/bin:$INSTALL_DIR:$PATH"
+export PATH="$HERMES_USER_BIN_DIR:$VIRTUAL_ENV/bin:$INSTALL_DIR:$PATH"
 export PYTHONPATH="$INSTALL_DIR:$WEBUI_DIR${PYTHONPATH:+:$PYTHONPATH}"
 export API_SERVER_ENABLED="${API_SERVER_ENABLED:-true}"
 export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
@@ -62,7 +66,7 @@ prepare_user() {
 bootstrap_home() {
   gosu hermes bash -lc '
     set -Eeuo pipefail
-    mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home}
+    mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home,runtime,bin,.ssh}
     if [[ ! -f "$HERMES_HOME/.env" ]]; then cp /opt/hermes/.env.example "$HERMES_HOME/.env"; fi
     if [[ ! -f "$HERMES_HOME/config.yaml" ]]; then cp /opt/hermes/cli-config.yaml.example "$HERMES_HOME/config.yaml"; fi
     if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then cp /opt/hermes/docker/SOUL.md "$HERMES_HOME/SOUL.md"; fi
@@ -72,6 +76,35 @@ bootstrap_home() {
     fi
     if [[ -d /opt/hermes/skills ]]; then "$VIRTUAL_ENV/bin/python" /opt/hermes/tools/skills_sync.py; fi
   '
+}
+
+sync_profile_launchers() {
+  local profile_dir="$HERMES_HOME/profiles"
+  local launcher
+  local launcher_path
+  local persisted_path
+  local source_path
+
+  [[ -d "$profile_dir" ]] || return 0
+  while IFS= read -r launcher; do
+    [[ -n "$launcher" ]] || continue
+    launcher_path="/usr/local/bin/$launcher"
+    persisted_path="$HERMES_USER_BIN_DIR/$launcher"
+
+    if [[ ! -f "$persisted_path" && ( -f "$launcher_path" || -L "$launcher_path" ) ]]; then
+      source_path="$launcher_path"
+      if [[ -L "$launcher_path" ]]; then
+        source_path="$(readlink -f "$launcher_path" 2>/dev/null || true)"
+      fi
+      if [[ -n "$source_path" && "$source_path" != "$persisted_path" && -f "$source_path" ]]; then
+        cp -a "$source_path" "$persisted_path"
+      fi
+    fi
+    if [[ -f "$persisted_path" ]]; then
+      chmod 755 "$persisted_path" || echo "[hermes-suite] Warning: could not set execute permissions on persisted launcher $persisted_path"
+      ln -sfn "$persisted_path" "$launcher_path"
+    fi
+  done < <(find "$profile_dir" -mindepth 1 -maxdepth 1 -exec basename "{}" \; 2>/dev/null | sort -u)
 }
 
 upsert_dotenv() {
@@ -152,16 +185,25 @@ prepare_install_dir() {
 }
 
 prepare_runtime_layout() {
-  mkdir -p "$HERMES_HOME" "$HERMES_WORKSPACE" /home/hermeswebui
+  mkdir -p "$HERMES_HOME" "$HERMES_WORKSPACE" /home/hermeswebui "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR"
   mkdir -p "$(dirname "$HERMES_WEBUI_STATE_DIR")"
 
   if [[ -e /home/hermeswebui/.hermes && ! -L /home/hermeswebui/.hermes ]]; then
     rm -rf /home/hermeswebui/.hermes
   fi
+  if [[ -e /home/hermes/.ssh && ! -L /home/hermes/.ssh ]]; then
+    if [[ -d /home/hermes/.ssh ]]; then
+      cp -a /home/hermes/.ssh/. "$HERMES_USER_SSH_DIR"/
+    fi
+    rm -rf /home/hermes/.ssh
+  fi
   ln -sfn "$HERMES_HOME" /home/hermeswebui/.hermes
+  ln -sfn "$HERMES_USER_SSH_DIR" /home/hermes/.ssh
+  sync_profile_launchers
 
-  chown -R hermes:hermes /home/hermes /home/hermeswebui "$HERMES_HOME" "$HERMES_WORKSPACE"
+  chown -R hermes:hermes /home/hermes /home/hermeswebui "$HERMES_HOME" "$HERMES_WORKSPACE" "$HERMES_RUNTIME_DIR" "$HERMES_USER_BIN_DIR" "$HERMES_USER_SSH_DIR"
   chmod 755 /home/hermes /home/hermeswebui
+  chmod 700 "$HERMES_USER_SSH_DIR"
   if [[ -f "$HERMES_HOME/config.yaml" ]]; then
     chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
     chmod 640 "$HERMES_HOME/config.yaml" 2>/dev/null || true
