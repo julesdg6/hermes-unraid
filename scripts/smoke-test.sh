@@ -85,6 +85,7 @@ PY"
 
 docker exec "$CONTAINER_NAME" bash -lc '[[ "$VIRTUAL_ENV" == "/opt/hermes/.venv" ]]'
 docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/opt/hermes/.venv/bin"'
+docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/home/hermes/.hermes/bin"'
 docker exec "$CONTAINER_NAME" bash -lc 'command -v hermes >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes model --help >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes doctor >/dev/null'
@@ -119,5 +120,10 @@ docker exec "$CONTAINER_NAME" bash -lc 'test "$(readlink -f /home/hermes/.ssh)" 
 docker exec "$CONTAINER_NAME" bash -lc 'test "$(readlink -f /usr/local/bin/ollama-primary)" = "/home/hermes/.hermes/bin/ollama-primary"'
 docker exec "$CONTAINER_NAME" bash -lc 'grep -q "^TERMINAL_SSH_KEY=/home/hermes/.hermes/ssh/id_ed25519$" /home/hermes/.hermes/profiles/ollama-primary/.env'
 docker exec "$CONTAINER_NAME" bash -lc 'ssh-keygen -y -f /home/hermes/.hermes/ssh/id_ed25519 >/dev/null'
+docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/home/hermes/.hermes/bin"'
+# Verify the persisted launcher is reachable via PATH (HERMES_USER_BIN_DIR)
+docker exec "$CONTAINER_NAME" bash -lc 'ollama-primary'
+# The legacy .ssh dir inside HERMES_HOME ($HERMES_HOME/.ssh) must be removed after migration
+docker exec "$CONTAINER_NAME" bash -lc 'test ! -d /home/hermes/.hermes/.ssh'
 
 echo "Smoke test passed for ${IMAGE_TAG}"

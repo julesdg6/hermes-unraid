@@ -77,7 +77,8 @@ ENV LANG=en_US.utf8 \
 
 RUN printf '%s\n' \
     'export VIRTUAL_ENV=/opt/hermes/.venv' \
-    'export PATH=/opt/hermes/.venv/bin:/opt/hermes:$PATH' \
+    'export HERMES_USER_BIN_DIR="${HERMES_USER_BIN_DIR:-${HERMES_HOME:-/home/hermes/.hermes}/bin}"' \
+    'export PATH="$HERMES_USER_BIN_DIR:/opt/hermes/.venv/bin:/opt/hermes:$PATH"' \
     > /etc/profile.d/hermes.sh \
     && chmod 644 /etc/profile.d/hermes.sh \
     && touch /home/hermes/.bashrc \
