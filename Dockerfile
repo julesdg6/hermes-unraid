@@ -31,7 +31,15 @@ LABEL io.hermes.webui.digest="$HERMES_WEBUI_DIGEST"
 LABEL io.hermes.webui.commit="$HERMES_WEBUI_COMMIT"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates locales rsync \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        locales \
+        rsync \
+        nano \
+        less \
+        procps \
+        iproute2 \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
@@ -51,6 +59,7 @@ RUN chmod 755 /usr/local/bin/hermes-suite-entrypoint /usr/local/bin/hermes-suite
     && mv /opt/hermes/.venv/bin/hermes /opt/hermes/.venv/bin/hermes-real \
     && ln -s /opt/hermes/docker/hermes-root-wrapper /opt/hermes/.venv/bin/hermes \
     && source /opt/hermes/.venv/bin/activate \
+    && uv pip install --python /opt/hermes/.venv/bin/python pip setuptools wheel \
     && uv pip install --python /opt/hermes/.venv/bin/python -r /opt/hermes-webui/requirements.txt \
     && chown -R hermes:hermes /home/hermes /home/hermeswebui /opt/hermes-webui
 
