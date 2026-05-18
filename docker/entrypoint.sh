@@ -207,6 +207,33 @@ PY
   upsert_dotenv API_SERVER_KEY "$API_SERVER_KEY"
 }
 
+ensure_telegram_deps() {
+  # If Telegram is configured (TELEGRAM_BOT_TOKEN is set), ensure python-telegram-bot
+  # is installed in the virtual environment. Installs automatically when pip is
+  # available; otherwise logs clear remediation instructions.
+  [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] || return 0
+
+  local python="$VIRTUAL_ENV/bin/python"
+  if "$python" -c "import telegram" 2>/dev/null; then
+    return 0
+  fi
+
+  log "Telegram is configured but python-telegram-bot is not installed."
+  if [[ -x "$VIRTUAL_ENV/bin/pip" ]]; then
+    log "Installing python-telegram-bot into the virtual environment..."
+    if gosu hermes "$VIRTUAL_ENV/bin/pip" install --quiet python-telegram-bot 2>&1 | sed -u 's/^/[telegram-install] /'; then
+      log "python-telegram-bot installed successfully."
+    else
+      log "Warning: Failed to install python-telegram-bot. Telegram gateway adapter will be unavailable."
+      log "  To install manually: docker exec <container> /opt/hermes/.venv/bin/pip install python-telegram-bot"
+    fi
+  else
+    log "Warning: pip is not available in the virtual environment. Telegram gateway adapter will be unavailable."
+    log "  To resolve, run: docker exec <container> /opt/hermes/.venv/bin/python -m ensurepip --upgrade"
+    log "  Then:            docker exec <container> /opt/hermes/.venv/bin/pip install python-telegram-bot"
+  fi
+}
+
 configure_gateway_defaults() {
   # Default to allowing all gateway users when no platform-specific allowlists
   # (e.g. TELEGRAM_ALLOWED_USERS) are configured, suppressing the
@@ -317,7 +344,9 @@ prepare_runtime_layout() {
   chmod 755 /home/hermes /home/hermeswebui
   chmod 700 "$HERMES_USER_SSH_DIR"
   if [[ -f "$HERMES_HOME/config.yaml" ]]; then
-    chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
+    if ! chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null; then
+      log "Warning: Could not set ownership on $HERMES_HOME/config.yaml — gateway may fall back to .env values"
+    fi
     chmod 640 "$HERMES_HOME/config.yaml" 2>/dev/null || true
   fi
 
@@ -394,6 +423,7 @@ prepare_runtime_layout
 bootstrap_home
 ensure_api_server_key
 configure_gateway_defaults
+ensure_telegram_deps
 
 log "Gateway API auth configured with a ${#API_SERVER_KEY}-character key"
 log "Hermes WebUI agent source is ${HERMES_WEBUI_AGENT_DIR}"
