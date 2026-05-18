@@ -168,6 +168,30 @@ hermes doctor
 hermes chat
 ```
 
+### Running `hermes gateway` as root
+
+If you run `hermes gateway` from a root shell (e.g. via `docker exec` without `--user`, or via a custom Docker Compose `command:` override), the image automatically drops privileges to the `hermes` user before starting the gateway. You do not need to set `HERMES_ALLOW_ROOT_GATEWAY=1` or modify your compose file.
+
+If you override the container's entrypoint or command and invoke `hermes gateway` directly, the same auto-drop behaviour applies:
+
+```yaml
+# docker-compose.yml — both forms work correctly
+entrypoint: ["/opt/hermes/docker/hermes-root-wrapper"]
+command: ["gateway"]
+```
+
+or simply:
+
+```yaml
+command: ["hermes", "gateway"]
+```
+
+To repair ownership after files were accidentally created as root:
+
+```bash
+docker exec Hermes-Suite chown -R hermes:hermes /home/hermes/.hermes
+```
+
 ## Updating
 
 GitHub Actions in this repository publish image tags to GHCR using:
