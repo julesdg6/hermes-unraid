@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Transparent wrapper around the Hermes CLI that auto-drops root privileges for
+# commands the upstream binary refuses to run as root inside the official image.
+#
+# When running as root inside the official container AND a 'gateway' subcommand
+# is detected, the wrapper re-executes the same command as the 'hermes' user via
+# gosu, mirroring what the official entrypoint does. In all other cases the real
+# hermes binary is called directly without modification.
+#
+# This allows Docker Compose overrides, Portainer templates, manual docker exec
+# sessions, and custom entrypoints that invoke "hermes gateway ..." as root to
+# work safely without setting HERMES_ALLOW_ROOT_GATEWAY=1.
+
+HERMES_REAL="${VIRTUAL_ENV:-/opt/hermes/.venv}/bin/hermes-real"
+
+# Only activate auto-drop inside the official container image
+if [[ "$(id -u)" == "0" && -f "/.within_container" ]]; then
+  case "${1:-}" in
+    gateway)
+      exec gosu hermes "$HERMES_REAL" "$@"
+      ;;
+  esac
+fi
+
+exec "$HERMES_REAL" "$@"

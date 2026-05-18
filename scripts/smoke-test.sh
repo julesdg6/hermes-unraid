@@ -90,6 +90,10 @@ docker exec "$CONTAINER_NAME" bash -lc 'command -v hermes >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes model --help >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes doctor >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'cd /opt/hermes && ./hermes doctor >/dev/null'
+# Verify that 'hermes gateway --help' works when invoked as root (auto-drop wrapper)
+docker exec "$CONTAINER_NAME" bash -lc 'hermes gateway --help >/dev/null'
+# Verify that the hermes-real binary exists (wrapper is in place)
+docker exec "$CONTAINER_NAME" bash -lc 'test -f /opt/hermes/.venv/bin/hermes-real'
 docker exec "$CONTAINER_NAME" bash -lc "cat > /usr/local/bin/ollama-primary <<'EOF'
 #!/usr/bin/env bash
 echo ollama-primary
