@@ -87,6 +87,7 @@ docker exec "$CONTAINER_NAME" bash -lc '[[ "$VIRTUAL_ENV" == "/opt/hermes/.venv"
 docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/opt/hermes/.venv/bin"'
 docker exec "$CONTAINER_NAME" bash -lc 'echo "$PATH" | grep -q "/home/hermes/.hermes/bin"'
 docker exec "$CONTAINER_NAME" bash -lc 'command -v hermes >/dev/null'
+docker exec "$CONTAINER_NAME" bash -lc '/opt/hermes/.venv/bin/python -c "import telegram"'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes model --help >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'hermes doctor >/dev/null'
 docker exec "$CONTAINER_NAME" bash -lc 'cd /opt/hermes && ./hermes doctor >/dev/null'
