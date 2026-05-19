@@ -4,7 +4,7 @@
 
 - Added debugging utilities (`nano`, `less`, `procps`, `iproute2`, `curl`) to the container image for easier in-container inspection and emergency recovery.
 - Virtual environment now includes `pip`, `setuptools`, and `wheel`, enabling manual package installation (e.g. `pip install python-telegram-bot`) without needing system Python or ensurepip.
-- Entrypoint now auto-installs `python-telegram-bot` into the virtual environment at startup when `TELEGRAM_BOT_TOKEN` is set, eliminating the silent "No adapter available for telegram" gateway warning.
+- Image build now installs `python-telegram-bot` into `/opt/hermes/.venv` by default, and entrypoint startup still auto-recovers missing installs when Telegram is configured via environment, `.env`, or `config.yaml`.
 - Entrypoint now emits an explicit warning when `config.yaml` ownership cannot be fixed, so users are alerted instead of silently falling back to `.env` values.
 - Suppressed gateway "No user allowlists configured" startup warning by defaulting `GATEWAY_ALLOW_ALL_USERS=true` in the generated `.env`. Override with `-e GATEWAY_ALLOW_ALL_USERS=false` and set platform allowlists if you need per-user access control.
 - Suppressed gateway "SQLite session store unavailable, falling back to JSONL: database is locked" startup warnings by: (1) removing stale SQLite WAL/journal files (`state.db-wal`, `state.db-shm`, `state.db-journal`) on container start to handle unclean-shutdown restarts, and (2) starting the gateway first and waiting for it to become ready before launching the dashboard, so the gateway initialises its SQLite database before the dashboard also tries to open it.

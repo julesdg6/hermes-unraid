@@ -186,6 +186,8 @@ or simply:
 command: ["hermes", "gateway"]
 ```
 
+`hermes gateway status` may not detect the foreground gateway process started by the Suite entrypoint. If Hermes Suite is already running, manually running `hermes gateway run` inside the same container can fail with `Port 8642 already in use`.
+
 To repair ownership after files were accidentally created as root:
 
 ```bash

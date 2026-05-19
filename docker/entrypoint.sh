@@ -208,17 +208,27 @@ PY
 }
 
 ensure_telegram_deps() {
-  # If Telegram is configured (TELEGRAM_BOT_TOKEN is set), ensure python-telegram-bot
-  # is installed in the virtual environment. Installs automatically when pip is
-  # available; otherwise logs clear remediation instructions.
-  [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] || return 0
-
+  # Ensure python-telegram-bot is available whenever Telegram appears configured
+  # via environment, .env, or config.yaml. If the import is already available, do
+  # nothing. If Telegram isn't configured, skip runtime installation.
   local python="$VIRTUAL_ENV/bin/python"
+  local dotenv_file="$HERMES_HOME/.env"
+  local config_file="$HERMES_HOME/config.yaml"
   if "$python" -c "import telegram" 2>/dev/null; then
     return 0
   fi
 
-  log "Telegram is configured but python-telegram-bot is not installed."
+  if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    if [[ -f "$dotenv_file" ]] && grep -Eq '^[[:space:]]*TELEGRAM_[A-Z0-9_]+=' "$dotenv_file"; then
+      :
+    elif [[ -f "$config_file" ]] && grep -Eiq '(^|[^[:alnum:]_])telegram([^[:alnum:]_]|$)' "$config_file"; then
+      :
+    else
+      return 0
+    fi
+  fi
+
+  log "Telegram configured but python-telegram-bot missing from /opt/hermes/.venv"
   if [[ -x "$VIRTUAL_ENV/bin/pip" ]]; then
     log "Installing python-telegram-bot into the virtual environment..."
     if gosu hermes "$VIRTUAL_ENV/bin/pip" install --quiet python-telegram-bot 2>&1 | sed -u 's/^/[telegram-install] /'; then

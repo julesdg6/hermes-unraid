@@ -60,6 +60,7 @@ RUN chmod 755 /usr/local/bin/hermes-suite-entrypoint /usr/local/bin/hermes-suite
     && ln -s /opt/hermes/docker/hermes-root-wrapper /opt/hermes/.venv/bin/hermes \
     && source /opt/hermes/.venv/bin/activate \
     && uv pip install --python /opt/hermes/.venv/bin/python pip setuptools wheel \
+    && uv pip install --python /opt/hermes/.venv/bin/python python-telegram-bot \
     && uv pip install --python /opt/hermes/.venv/bin/python -r /opt/hermes-webui/requirements.txt \
     && chown -R hermes:hermes /home/hermes /home/hermeswebui /opt/hermes-webui
 
