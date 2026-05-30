@@ -40,7 +40,9 @@ RUN apt-get update \
         procps \
         iproute2 \
         curl \
-    && rm -rf /var/lib/apt/lists/*
+        tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && test -x /usr/bin/tini
 
 RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 
