@@ -47,6 +47,25 @@ wait_for_url() {
   done
 }
 
+wait_for_health() {
+  local timeout="${1:-240}"
+  local started
+  local health_status
+  started="$(date +%s)"
+  while true; do
+    health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER_NAME")"
+    if [[ "$health_status" == "healthy" ]]; then
+      return 0
+    fi
+    if (( $(date +%s) - started >= timeout )); then
+      echo "container health status is ${health_status}, expected healthy within ${timeout}s" >&2
+      docker inspect --format '{{json .State.Health}}' "$CONTAINER_NAME" >&2 || true
+      return 1
+    fi
+    sleep 2
+  done
+}
+
 if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
   docker build -t "$IMAGE_TAG" "$ROOT_DIR"
   BUILT_IMAGE=1
@@ -71,6 +90,7 @@ docker run -d --name "$CONTAINER_NAME" \
   -v "${WORKSPACE_DIR}:/home/hermeswebui/workspace" \
   "$IMAGE_TAG" >/dev/null
 
+wait_for_health
 wait_for_url gateway "http://127.0.0.1:${HOST_GATEWAY_PORT}/health"
 wait_for_url dashboard "http://127.0.0.1:${HOST_DASHBOARD_PORT}/"
 wait_for_url webui "http://127.0.0.1:${HOST_WEBUI_PORT}/health"
@@ -115,6 +135,7 @@ docker run -d --name "$CONTAINER_NAME" \
   -v "${WORKSPACE_DIR}:/home/hermeswebui/workspace" \
   "$IMAGE_TAG" >/dev/null
 
+wait_for_health
 wait_for_url gateway "http://127.0.0.1:${HOST_GATEWAY_PORT}/health"
 wait_for_url dashboard "http://127.0.0.1:${HOST_DASHBOARD_PORT}/"
 wait_for_url webui "http://127.0.0.1:${HOST_WEBUI_PORT}/health"
