@@ -40,6 +40,7 @@ RUN apt-get update \
         procps \
         iproute2 \
         curl \
+        gosu \
         tini \
     && rm -rf /var/lib/apt/lists/* \
     && test -x /usr/bin/tini
@@ -103,5 +104,5 @@ RUN printf '%s\n' \
 
 EXPOSE 8642 9119 8787
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 CMD ["/usr/local/bin/hermes-suite-healthcheck"]
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=18 CMD ["/usr/local/bin/hermes-suite-healthcheck"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/hermes-suite-entrypoint"]
