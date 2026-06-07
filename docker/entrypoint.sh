@@ -69,7 +69,13 @@ bootstrap_home() {
   gosu hermes bash -lc '
     set -Eeuo pipefail
     mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home,runtime,bin,ssh}
-    if [[ ! -f "$HERMES_HOME/.env" ]]; then cp /opt/hermes/.env.example "$HERMES_HOME/.env"; fi
+    if [[ ! -f "$HERMES_HOME/.env" ]]; then
+      if [[ -f /opt/hermes/.env.example ]]; then
+        cp /opt/hermes/.env.example "$HERMES_HOME/.env"
+      else
+        : > "$HERMES_HOME/.env"
+      fi
+    fi
     if [[ ! -f "$HERMES_HOME/config.yaml" ]]; then cp /opt/hermes/cli-config.yaml.example "$HERMES_HOME/config.yaml"; fi
     if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then cp /opt/hermes/docker/SOUL.md "$HERMES_HOME/SOUL.md"; fi
     if [[ ! -f "$HERMES_HOME/auth.json" && -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]]; then
