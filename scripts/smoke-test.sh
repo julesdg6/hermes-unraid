@@ -22,9 +22,9 @@ cleanup() {
     fi
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
   fi
-  docker run --rm -v "${HERMES_HOME_DIR}:/target" busybox sh -c "chown -R $(id -u):$(id -g) /target" >/dev/null 2>&1 || true
-  docker run --rm -v "${WORKSPACE_DIR}:/target" busybox sh -c "chown -R $(id -u):$(id -g) /target" >/dev/null 2>&1 || true
-  rm -rf "$HERMES_HOME_DIR" "$WORKSPACE_DIR"
+  docker run --rm -v "${HERMES_HOME_DIR}:/target" busybox sh -c "chmod -R a+rwX /target && chown -R $(id -u):$(id -g) /target" >/dev/null 2>&1 || true
+  docker run --rm -v "${WORKSPACE_DIR}:/target" busybox sh -c "chmod -R a+rwX /target && chown -R $(id -u):$(id -g) /target" >/dev/null 2>&1 || true
+  rm -rf "$HERMES_HOME_DIR" "$WORKSPACE_DIR" || sudo rm -rf "$HERMES_HOME_DIR" "$WORKSPACE_DIR" 2>/dev/null || true
   if (( BUILT_IMAGE == 1 )); then
     docker image rm -f "$IMAGE_TAG" >/dev/null 2>&1 || true
   fi
