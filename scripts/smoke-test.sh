@@ -88,6 +88,7 @@ docker run -d --name "$CONTAINER_NAME" \
   -e HERMES_GID=100 \
   -e WANTED_UID=99 \
   -e WANTED_GID=100 \
+  -e DASHBOARD_HOST=0.0.0.0 \
   -e HERMES_DASHBOARD_BASIC_AUTH_USERNAME="${DASHBOARD_BASIC_AUTH_USERNAME}" \
   -e HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="${DASHBOARD_BASIC_AUTH_PASSWORD}" \
   -v "${HERMES_HOME_DIR}:/home/hermes/.hermes" \
@@ -96,7 +97,7 @@ docker run -d --name "$CONTAINER_NAME" \
 
 wait_for_health
 wait_for_url gateway "http://127.0.0.1:${HOST_GATEWAY_PORT}/health"
-wait_for_url dashboard "http://127.0.0.1:${HOST_DASHBOARD_PORT}/"
+wait_for_url dashboard "http://${DASHBOARD_BASIC_AUTH_USERNAME}:${DASHBOARD_BASIC_AUTH_PASSWORD}@127.0.0.1:${HOST_DASHBOARD_PORT}/"
 wait_for_url webui "http://127.0.0.1:${HOST_WEBUI_PORT}/health"
 
 docker exec "$CONTAINER_NAME" bash -lc "python3 - <<'PY'
@@ -135,6 +136,7 @@ docker run -d --name "$CONTAINER_NAME" \
   -e HERMES_GID=100 \
   -e WANTED_UID=99 \
   -e WANTED_GID=100 \
+  -e DASHBOARD_HOST=0.0.0.0 \
   -e HERMES_DASHBOARD_BASIC_AUTH_USERNAME="${DASHBOARD_BASIC_AUTH_USERNAME}" \
   -e HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="${DASHBOARD_BASIC_AUTH_PASSWORD}" \
   -v "${HERMES_HOME_DIR}:/home/hermes/.hermes" \
@@ -143,7 +145,7 @@ docker run -d --name "$CONTAINER_NAME" \
 
 wait_for_health
 wait_for_url gateway "http://127.0.0.1:${HOST_GATEWAY_PORT}/health"
-wait_for_url dashboard "http://127.0.0.1:${HOST_DASHBOARD_PORT}/"
+wait_for_url dashboard "http://${DASHBOARD_BASIC_AUTH_USERNAME}:${DASHBOARD_BASIC_AUTH_PASSWORD}@127.0.0.1:${HOST_DASHBOARD_PORT}/"
 wait_for_url webui "http://127.0.0.1:${HOST_WEBUI_PORT}/health"
 
 docker exec "$CONTAINER_NAME" bash -lc 'test -f /home/hermes/.hermes/ssh/id_ed25519'
