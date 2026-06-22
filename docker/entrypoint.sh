@@ -8,7 +8,7 @@ HERMES_UID="${HERMES_UID:-${WANTED_UID:-99}}"
 HERMES_GID="${HERMES_GID:-${WANTED_GID:-100}}"
 WANTED_UID="${WANTED_UID:-$HERMES_UID}"
 WANTED_GID="${WANTED_GID:-$HERMES_GID}"
-DASHBOARD_HOST="${DASHBOARD_HOST:-0.0.0.0}"
+DASHBOARD_HOST="${DASHBOARD_HOST:-127.0.0.1}"
 DASHBOARD_PORT="${DASHBOARD_PORT:-9119}"
 WEBUI_HOST="${WEBUI_HOST:-${HERMES_WEBUI_HOST:-0.0.0.0}}"
 WEBUI_PORT="${WEBUI_PORT:-${HERMES_WEBUI_PORT:-8787}}"
@@ -447,9 +447,6 @@ log "Starting Hermes gateway, dashboard, and WebUI"
 start_service gateway gosu hermes "$VIRTUAL_ENV/bin/hermes" gateway run
 
 dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" --no-open)
-if [[ "$DASHBOARD_HOST" != "127.0.0.1" && "$DASHBOARD_HOST" != "localhost" ]]; then
-  dashboard_command=(gosu hermes "$VIRTUAL_ENV/bin/hermes" dashboard --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" --no-open --insecure)
-fi
 
 # Wait for gateway to finish initializing its SQLite database before launching
 # dashboard, which also opens the shared state.db — concurrent opens cause a
