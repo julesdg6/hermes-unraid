@@ -455,7 +455,11 @@ wait_for_url gateway "$GATEWAY_HEALTH_URL"
 start_service dashboard "${dashboard_command[@]}"
 start_service webui gosu hermes bash -lc "cd '$WEBUI_DIR' && export HOME=/home/hermeswebui HERMES_WEBUI_AGENT_DIR='$INSTALL_DIR' && exec /opt/hermes/.venv/bin/python server.py"
 
-wait_for_url dashboard "http://127.0.0.1:${DASHBOARD_PORT}/"
+_dashboard_wait_url="http://127.0.0.1:${DASHBOARD_PORT}/"
+if [[ -n "${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-}" && -n "${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}" ]]; then
+  _dashboard_wait_url="http://${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}:${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}@127.0.0.1:${DASHBOARD_PORT}/"
+fi
+wait_for_url dashboard "$_dashboard_wait_url"
 wait_for_url webui "http://127.0.0.1:${WEBUI_PORT}/health"
 
 log "Hermes Suite started successfully"
