@@ -4,6 +4,10 @@
 
 - Fixed dashboard unreachable on port 9119: changed `DASHBOARD_HOST` default from `127.0.0.1` (loopback-only) to `0.0.0.0` so the dashboard accepts connections forwarded through Docker's port mapping. Previously the dashboard bound only to the container's loopback interface, making port 9119 inaccessible from the host or LAN even when correctly mapped.
 
+- Container healthcheck now verifies all three services — gateway (`/health`), dashboard (port 9119), and WebUI (`/health`) — so the container is marked unhealthy and eligible for restart if the dashboard or WebUI goes down after initial startup. Previously only the gateway was monitored, allowing port 9119 to remain closed without Docker detecting the failure.
+- Entrypoint dashboard readiness check now includes HTTP basic-auth credentials when `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` and `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` are set, preventing the startup health check from timing out (and killing the whole container) when basic auth is enabled on the dashboard.
+- Unraid template now exposes `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` and `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` as optional advanced config variables so users can enable HTTP basic auth on the dashboard directly from the Community Applications UI.
+
 - Added debugging utilities (`nano`, `less`, `procps`, `iproute2`, `curl`) to the container image for easier in-container inspection and emergency recovery.
 - Virtual environment now includes `pip`, `setuptools`, and `wheel`, enabling manual package installation (e.g. `pip install python-telegram-bot`) without needing system Python or ensurepip.
 - Image build now installs `python-telegram-bot` into `/opt/hermes/.venv` by default, and entrypoint startup still auto-recovers missing installs when Telegram is configured via environment, `.env`, or `config.yaml`.
